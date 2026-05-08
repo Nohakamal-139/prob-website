@@ -1,5 +1,5 @@
 import filecmp
-
+import math
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -57,12 +57,13 @@ def train (df):
     spam_prob = spam_msgs / total_msgs
     ham_prob = ham_msgs / total_msgs
     def get_word_counts(emails):
-      all_words = []
+      all_features = []
       for msg in emails:
-        words = re.findall(r'\b\w+\b', msg.lower())
-        filtered_words = [w for w in words if w not in STOPWORDS]
-        all_words.extend(filtered_words)
-      return Counter(all_words),len(all_words)
+        words = [w for w in re.findall(r'\b\w+\b', msg.lower()) if w not in STOPWORDS]
+        all_features.extend(words) 
+        for i in range(len(words) - 1):
+            all_features.append(f"{words[i]} {words[i+1]}")
+      return Counter(all_features), len(all_features)
     spam_counts , total_spam_words = get_word_counts(df[df['label'] == 'spam']['message'])
     ham_counts , total_ham_words = get_word_counts(df[df['label'] == 'ham']['message'])
     vocab_size = len(set(spam_counts.keys()).union(set(ham_counts.keys())))
@@ -77,13 +78,9 @@ with st.sidebar:
     st.error(f"🚨 Spam: {len(df[df['label']=='spam'])}")
     st.markdown("---")
     st.caption("Developed by us to save your inbox! ❤️")
-
-
 st.subheader("🛡️ Smart AI Spam Detection Shield")
 st.markdown("##### Probabilistic text classification using Naive Bayes Algorithm")
 st.write("---")
-
-
 st.write("---")
 col1,col2 = st.columns([1.5,1])
 with col1:
@@ -93,14 +90,18 @@ with col1:
         if user_input:
             words = [w for w in re.findall(r'\w+', user_input.lower()) if w not in STOPWORDS]
             alpha =1
-            spam_log_prob =spam_prob
-            ham_log_prob =ham_prob
-            for word in words:
-                spam_log_prob *= (spam_counts.get(word, 0) + alpha) / (total_spam_words +  vocab_size)
-                ham_log_prob *= (ham_counts.get(word, 0) + alpha) / (total_ham_words +  vocab_size)
-            prob_sum = spam_log_prob + ham_log_prob
-            final_spam = (spam_log_prob / prob_sum)*100
-            final_ham = (ham_log_prob / prob_sum)*100
+            s_log = math.log(spam_prob)
+            h_log = math.log(ham_prob)
+            features = list(words)
+            for i in range(len(words) - 1):
+                features.append(f"{words[i]} {words[i+1]}")
+            for f in features:
+                s_log += math.log((spam_counts.get(f, 0) + alpha) / (total_spam_words + vocab_size))
+                h_log += math.log((ham_counts.get(f, 0) + alpha) / (total_ham_words + vocab_size))
+            mx = max(s_log, h_log)
+            e_s, e_h = math.exp(s_log - mx), math.exp(h_log - mx)
+            final_spam = (e_s / (e_s + e_h)) * 100
+            final_ham = (e_h / (e_s + e_h)) * 100
             if final_spam > final_ham:
                 st.markdown(f'<div class="result-card" style="background-color: rgba(255, 75, 75, 0.2); border: 2px solid #ff4b4b;">'
                    f'<h2 style="color: #ff4b4b; margin:0;">🚨 SPAM DETECTED</h2>'
