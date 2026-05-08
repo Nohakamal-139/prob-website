@@ -70,7 +70,7 @@ def train (df):
 spam_prob, ham_prob, spam_counts, ham_counts, total_spam_words, total_ham_words, vocab_size = train(df)
 with st.sidebar:
     st.image("https://img.icons8.com/ios/100/ffffff/mail.png", width=60)
-    st.subheader("Project Dashboard")
+    st.subheader("Statistics and Data Analysis")
     st.markdown("---")
     st.info(f"📁 Dataset: {len(df)} records")
     st.success(f"✅ Normal (Ham): {len(df[df['label']=='ham'])}")
